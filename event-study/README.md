@@ -1,47 +1,49 @@
-# Fox / Roku Acquisition: Event Study of Cumulative Abnormal Returns
+# Fox / Roku Acquisition: Measuring the Stock-Price Impact
 
-On June 15, 2026, Fox Corporation (FOXA) announced a definitive agreement to acquire Roku, Inc. (ROKU) in a cash-and-stock deal valued at approximately $22 billion. This event study measures the stock-price impact of that announcement on both tickers using standard Cumulative Abnormal Return (CAR) methodology — the same framework used in securities litigation to isolate price effects attributable to a specific disclosure.
+On June 15, 2026, Fox Corporation announced it was buying Roku for roughly $22 billion in cash and stock. That announcement is interesting for two reasons that most event study writeups miss: ROKU's reaction is the expected story (acquisition premium, target pops), but FOXA's reaction is the more revealing one. Acquirers don't usually drop 26% in three days. When they do, the market is saying something specific about the deal terms.
+
+This event study measures both sides using Cumulative Abnormal Return (CAR) methodology — the same framework used in securities litigation to isolate price effects attributable to a specific disclosure.
 
 ---
 
-## Pre-Flight Checks
+## Pre-flight: getting the inputs right before touching the model
 
-Before building the model, two checks are mandatory: confirming the exact disclosure timestamp (which sets day zero) and scanning for confounding news that could contaminate the abnormal return estimate.
+Two things have to be nailed before building anything: the exact announcement timing (which sets day zero for the price analysis) and whether anything else was happening with either company that week that could contaminate the results.
 
-### 1. Disclosure Timing
+### Disclosure timing
 
-Both 8-K filings were pulled directly from SEC EDGAR to establish the timing:
+Both 8-Ks were pulled directly from SEC EDGAR:
 
-- **FOXA 8-K accepted: 7:13 AM ET, June 15, 2026** — pre-market open.
-- **ROKU 8-K accepted: 7:47 AM ET, June 15, 2026** — pre-market open.
+- **FOXA 8-K accepted: 7:13 AM ET, June 15, 2026** — pre-market
+- **ROKU 8-K accepted: 7:47 AM ET, June 15, 2026** — pre-market
 
-Both disclosures hit before the 9:30 AM open, so the full price adjustment occurred during June 15 trading. **Day zero = June 15, 2026 for both tickers.**
+Both hit before the 9:30 AM open. Day zero is June 15 for both tickers.
 
-### 2. Confound Check
+### Confound check
 
-The window examined was June 8–22, 2026 (spanning the [-5,+3] robustness window).
+Scanned June 8–22 for anything else material to either ticker:
 
-- **FOXA:** One material confound identified — a separate 8-K filed June 11, 2026 disclosing an employment extension and compensation increase for CEO Lachlan Murdoch. This filing falls within the wide [-5,+3] window but outside the primary [-1,+1] window. This is the reason the [-1,+1] window is treated as primary: it avoids absorbing any price reaction to the June 11 filing.
-- **ROKU:** No material confounds found in the June 8–22 window. No earnings releases, unrelated 8-Ks, guidance updates, or leadership changes.
+- **FOXA:** One thing turned up — a separate 8-K filed June 11 disclosing an employment extension and comp increase for CEO Lachlan Murdoch. Falls within the wide [-5,+3] robustness window but outside the primary [-1,+1] window. This is why [-1,+1] is treated as primary: it avoids absorbing any price reaction to that filing.
+- **ROKU:** Nothing. No earnings, no unrelated 8-Ks, no guidance updates in that window.
 
-The confound finding is not a reason to abandon the analysis — it is a reason to anchor conclusions to the [-1,+1] primary window and treat [-5,+3] as a robustness check only.
+The FOXA confound doesn't kill the analysis — it's a reason to anchor conclusions to the tight window and treat the wide one as a robustness check.
 
 ---
 
 ## Method
 
-The estimation window runs from June 2, 2025 to June 1, 2026 — 251 trading days — ending 10 trading days before the announcement. The 10-day gap prevents the event itself from leaking into the baseline estimate of normal stock behavior. A single-factor OLS market model (`R_it = alpha + beta * R_mt + epsilon_it`) is fit separately for each ticker over that window, using the S&P 500 (^GSPC) as the market proxy. For each day in the event window, the abnormal return is the actual return minus what the market model predicted: `AR_it = R_it - (alpha_hat + beta_hat * R_mt)`. The Cumulative Abnormal Return (CAR) is the sum of daily abnormal returns across the event window, and statistical significance is assessed with a Patell-style t-test: `t = CAR / (sqrt(L) * sigma_AR)`, where sigma_AR is the standard deviation of residuals from the estimation window and L is the event window length.
+Estimation window: 251 trading days ending June 1, 2026 — 10 days before the announcement. The gap prevents the event from leaking into the baseline. A single-factor OLS market model (`R_it = alpha + beta * R_mt`) is fit separately for each ticker using the S&P 500 as the market proxy. For each day in the event window, the abnormal return is actual return minus what the model predicted: `AR_it = R_it - (alpha_hat + beta_hat * R_mt)`. The CAR is the sum of daily ARs across the window. Significance is assessed with a Patell-style t-test using the estimation-window residual sigma.
 
 ---
 
-## Market Model Parameters
+## Market model parameters
 
-| Ticker | Alpha | Beta | R-squared | Sigma (AR) |
-|--------|-------|------|-----------|------------|
-| FOXA   | 0.000505 | 0.457 | 0.037 | 1.75% |
-| ROKU   | 0.000553 | 2.080 | 0.310 | 2.33% |
+| Ticker | Alpha | Beta | R² | Sigma (AR) |
+|--------|-------|------|----|------------|
+| FOXA | 0.000505 | 0.457 | 0.037 | 1.75% |
+| ROKU | 0.000553 | 2.080 | 0.310 | 2.33% |
 
-ROKU's beta of 2.08 reflects its character as a high-volatility growth stock — it moves roughly twice as much as the market on a typical day, well above the 0.5–1.5 range typical for large-cap established companies. FOXA's beta of 0.46 reflects a mature media company with muted market sensitivity. The low R-squared for FOXA (3.7%) means most of FOXA's daily return variance is idiosyncratic, not market-driven; the model's predicted return benchmark is loose, but this actually makes the FOXA result harder to achieve (sigma_AR is large), not easier — the -25.7% CAR clears significance despite that headwind.
+ROKU's beta of 2.08 reflects a high-volatility growth stock — it moves roughly twice the market on a normal day. FOXA's 0.46 is a mature media company with muted market sensitivity. FOXA's low R² (3.7%) means most of its daily return variance is idiosyncratic, which makes the -25.7% CAR harder to achieve, not easier — the test has to clear a loose benchmark.
 
 ---
 
@@ -49,85 +51,65 @@ ROKU's beta of 2.08 reflects its character as a high-volatility growth stock —
 
 ![CAR Plot](car_plot.png)
 
-*Primary event window [-1, +1] (3 trading days: June 12, 15, 16): cumulative abnormal returns for FOXA and ROKU around the June 15 announcement.*
+*Primary event window [-1,+1] (June 12, 15, 16): cumulative abnormal returns for both tickers.*
 
-![Wide Window](car_plot_wide.png)
+![Wide window](car_plot_wide.png)
 
-*Robustness window [-5, +3] (9 trading days: June 8–18). Note the FOXA confound (June 11 CEO filing) is visible in this window. Data through June 18 only; days +4 and +5 not yet available.*
+*Robustness window [-5,+3] (June 8–18). The FOXA confound from the June 11 CEO filing is visible here.*
 
-### Results Table
+| Ticker | Window | CAR | t-stat | p-value | |
+|--------|--------|-----|--------|---------|---|
+| FOXA | [-1,+1] primary | -25.72% | -8.480 | <0.001 | *** |
+| ROKU | [-1,+1] primary | +12.60% | 3.122 | 0.002 | *** |
+| FOXA | [-5,+3] robustness | -24.12% | -4.591 | <0.001 | *** |
+| ROKU | [-5,+3] robustness | +10.21% | 1.461 | 0.145 | n.s. |
 
-| Ticker | Window | CAR | t-stat | p-value | Significance |
-|--------|--------|-----|--------|---------|--------------|
-| FOXA | [-1,+1] — primary | -25.72% | -8.480 | <0.001 | *** |
-| ROKU | [-1,+1] — primary | +12.60% | 3.122 | 0.002 | *** |
-| FOXA | [-5,+3] — robustness | -24.12% | -4.591 | <0.001 | *** |
-| ROKU | [-5,+3] — robustness | +10.21% | 1.461 | 0.145 | not significant |
+---
 
-*Significance: *** p<0.01. Two-tailed Patell test; df = N_est − 2 = 249 (uncertainty comes from estimating alpha and beta over the 251-day estimation window, not from the event-window length). Null hypothesis: CAR = 0.*
+### ROKU (target)
 
-### ROKU (Target)
-
-The +12.60% CAR in the [-1,+1] window is significant at the 1% level (p=0.002). The day-by-day breakdown tells a more precise story than the headline number:
-
-| Day | Date | ROKU Return | Predicted | AR |
-|-----|------|------------|-----------|-----|
+| Day | Date | ROKU return | Predicted | AR |
+|-----|------|-------------|-----------|-----|
 | -1 | Jun 12 | +20.08% | +1.10% | **+18.98%** |
 | 0 | Jun 15 | -1.92% | +3.49% | -5.41% |
 | +1 | Jun 16 | -2.09% | -1.13% | -0.97% |
 
-The CAR is almost entirely the day -1 jump. ROKU rose 20% on Friday June 12 — the trading day before the official Monday announcement — while the market was up only 0.5%. This strongly suggests deal information circulated before the EDGAR filing. On the actual announcement day (June 15), ROKU had a -5.4% abnormal return: the market gave back some of the pre-announcement premium, consistent with either partial sell-the-news behavior or investor concern about deal execution. The net +12.6% across the three-day window captures the full acquisition premium incorporated into the stock price, but the mechanism is pre-announcement leakage, not a clean day-0 reaction.
+The CAR is almost entirely the June 12 jump. ROKU rose 20% on Friday — the day before the official Monday announcement — while the market was up about 0.5%. That's deal information circulating before the EDGAR filing. On the actual announcement day, ROKU had a -5.4% abnormal return: sell-the-news, or concern about execution. The net +12.6% captures the full acquisition premium incorporated into the stock, but the mechanism is pre-announcement leakage, not a clean day-0 reaction.
 
-### FOXA (Acquirer)
+### FOXA (acquirer)
 
-The -25.72% CAR in the [-1,+1] window is significant at the 5% level (p=0.0136). The day-by-day breakdown:
-
-| Day | Date | FOXA Return | Predicted | AR |
-|-----|------|------------|-----------|-----|
+| Day | Date | FOXA return | Predicted | AR |
+|-----|------|-------------|-----------|-----|
 | -1 | Jun 12 | -3.59% | +0.28% | -3.87% |
 | 0 | Jun 15 | -16.84% | +0.81% | **-17.65%** |
 | +1 | Jun 16 | -4.42% | -0.21% | -4.21% |
 
-Unlike ROKU, FOXA's loss is spread across all three days but concentrated on day 0, consistent with the market processing a large, unexpected negative signal. The wide-window result (-24.12%, p<0.001) is also significant and shows the reaction was not spreading pre-announcement for FOXA — the day -1 negative AR likely reflects the June 11 CEO comp filing's after-hours effect bleeding into June 12 trading, not deal leakage. A -25.7% acquirer CAR is an extreme outcome; the M&A literature typically finds acquirer CARs in the range of -2% to -5% even in overpriced deals.
+Unlike ROKU, the loss is concentrated on day 0 and spreads across all three days — consistent with the market processing a large, unexpected negative signal rather than pre-announcement leakage. The wide-window result (-24.12%, p<0.001) corroborates this. The day -1 negative AR is likely the June 11 CEO comp filing bleeding into June 12 trading. A -25.7% acquirer CAR is an extreme outcome; the M&A literature typically finds acquirer CARs in the -2% to -5% range even in overpriced deals.
 
 ---
 
-## So What
+## So what?
 
-### The Gap: -26% Acquirer, +13% Target
+The ~38 percentage point spread between FOXA and ROKU tells a coherent story.
 
-The ~38-percentage-point spread between FOXA's and ROKU's CARs tells a coherent story about how the market judged the deal terms.
+ROKU's +13% is the expected target premium — what it takes to get shareholders to tender. That part is textbook.
 
-**ROKU's +13% reflects the implied acquisition premium** incorporated over the announcement period (largely pre-announced on June 12). A significant positive CAR for a target is expected in arm's-length acquisitions — it is the premium that persuades target shareholders to tender.
+FOXA's -26% is the market saying Fox overpaid. That kind of acquirer CAR doesn't happen in deals the market views as reasonably priced. It implies the market thought the $22B price was materially above what Roku is worth to Fox strategically, or that the deal rationale wasn't clear enough to justify the size of the bet.
 
-**FOXA's -26% reflects a market judgment that Fox overpaid.** A negative acquirer CAR is not unusual in large M&A transactions, but -26% is an extreme outcome. In the M&A literature, acquirer CARs of this magnitude typically signal that the market views the price as materially above fair value, that the strategic rationale is unclear, or both. In plain terms: the market concluded Fox paid more than Roku is worth to Fox.
-
-### Why This Number Matters to a Litigation Team
-
-Event studies are the accepted standard methodology in securities litigation for isolating the price impact attributable to a specific disclosure. Courts and regulators rely on them to establish "price impact" — the causal link between a statement or transaction and a measurable change in stock value — in securities fraud and M&A fairness cases.
-
-Three features of this result are directly relevant:
-
-1. **Magnitude.** A -26% acquirer CAR is large enough to constitute meaningful economic harm to FOXA shareholders who held through the announcement. If FOXA shareholders later alleged that the deal terms were inadequate or that the board failed its fiduciary duty by approving an overpayment, the CAR provides a defensible estimate of the per-share value destroyed at announcement.
-
-2. **Statistical significance.** At p<0.001 ([-1,+1] window), the result easily clears any conventional evidentiary threshold. The wide-window result (also p<0.001) provides corroborating support. A result that holds across both window specifications is more defensible in expert testimony than one that depends on a single window choice.
-
-3. **ROKU leakage as corroborating evidence.** ROKU's +19% abnormal return on June 12 — the day before the official filing — suggests information circulated before EDGAR acceptance. In a litigation context, this pre-announcement price movement would itself be worth examining: it is consistent with selective disclosure or insider trading, and it means the deal's price impact cannot be fully isolated to a single trading day.
-
-For an economic consulting engagement, this analysis would form the foundation of a damages calculation: the CAR estimate, applied to shares outstanding, converts to a dollar-denominated loss figure that can be compared to the deal premium and used in settlement negotiations or expert reports.
+From a litigation standpoint, this matters for a few reasons. First, magnitude: -26% on FOXA shares translates directly to a dollar-denominated loss figure for shareholders who held through the announcement, which is the starting point for any damages calculation in an M&A fairness case. Second, the result holds across both window specifications (p<0.001 either way), which matters for expert testimony — a result that depends on a single window choice is easy to attack. Third, ROKU's pre-announcement +19% on June 12 is worth examining independently: that kind of price movement the day before an official filing is consistent with selective disclosure or insider trading, and it means the deal's price impact can't be cleanly isolated to a single trading day.
 
 ---
 
-## Methodology Notes
+## Methodology choices
 
-| Parameter | Choice | Rationale |
-|-----------|--------|-----------|
-| Estimation window | 251 trading days | One full trading year; standard in academic and litigation practice |
-| Pre-event gap | 9 trading days | Prevents event-period returns from biasing the baseline model |
-| Market model | Single-factor OLS vs. S&P 500 | Simpler and more defensible in testimony than Fama-French; FF adds marginal explanatory power for large-caps |
-| Primary event window | [-1,+1] = 3 trading days | Captures announcement-day reaction while minimizing exposure to confounds; standard in litigation-oriented work |
-| Robustness window | [-5,+3] = 9 trading days | Tests whether effects are concentrated (they are) and surfaces the FOXA confound; days +4/+5 not yet in data |
-| Significance test | Patell-style | Uses estimation-window sigma, appropriate when event-window variance may differ from normal |
+| Parameter | Choice | Why |
+|-----------|--------|-----|
+| Estimation window | 251 trading days | One full trading year; standard in litigation practice |
+| Pre-event gap | 9 trading days | Keeps event-period returns out of the baseline estimate |
+| Market model | Single-factor OLS vs. S&P 500 | More defensible in testimony than Fama-French; FF adds marginal explanatory power for large-caps |
+| Primary event window | [-1,+1] | Captures the announcement reaction while avoiding the FOXA confound |
+| Robustness window | [-5,+3] | Tests concentration of effects; surfaces the FOXA confound for disclosure |
+| Significance test | Patell-style | Uses estimation-window sigma, appropriate when event-window variance may differ |
 
 ---
 
@@ -138,10 +120,6 @@ pip install -r requirements.txt
 python src/run.py
 ```
 
-All parameters (tickers, event date, window lengths) are pinned at the top of `src/run.py`. The full pipeline — data pull, market model estimation, abnormal return calculation, CAR computation, significance testing, and plots — runs from a single execution.
+All parameters (tickers, event date, window lengths) are pinned at the top of `src/run.py`.
 
-**Data source:** Yahoo Finance via `yfinance`. Price data cached in `data/`.
-
----
-
-*Built as a portfolio project demonstrating event-study methodology for economic consulting (Cornerstone Research, Analysis Group, NERA) and quant/fintech applications. Event: Fox Corporation acquisition of Roku, Inc., announced June 15, 2026.*
+**Data source:** Yahoo Finance via `yfinance`, cached in `data/`.
